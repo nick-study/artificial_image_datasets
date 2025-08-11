@@ -1,0 +1,164 @@
+# Install the required libraries
+!pip install --upgrade openai  # Upgrade OpenAI library for using DALL-E
+!pip install ultralytics==8.2.2  # Install specific version of ultralytics for YOLO
+
+# Import necessary libraries
+from ultralytics import YOLO  # For object detection using YOLO
+import os  # For file and directory management
+from os import listdir  # To list contents of directories
+from urllib.request import urlretrieve  # For downloading images from URLs
+import urllib  # General library for working with URLs
+
+# Mount Google Drive for data storage
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Load YOLO models
+# 'baseline_model.pt' is the pre-trained model for initial labeling
+basic_labeler_model = YOLO("baseline_model.pt")
+# 'fine_tunned_model_KITTI' is the fine-tuned YOLO model for improved labeling
+improved_labeler_model = YOLO("fine_tunned_model_KITTI")
+
+# Initialize the OpenAI client for generating images with DALL-E
+# The client defaults to using the API key set in the environment variable OPENAI_API_KEY.
+# Alternatively, you can specify the API key directly as shown below.
+client = OpenAI(
+    # defaults to os.environ.get("OPENAI_API_KEY")
+    api_key= "api_key",
+)
+# Function to predict object labels using YOLO
+def predict(model, img_path):
+    """
+    Perform predictions on an image using a YOLO model.
+    
+    Parameters:
+    - model: YOLO model to use for predictions (basic_labeler_model or improved_labeler_model)
+    - img_path: Path to the input image
+
+    Returns:
+    - Predict results with saved outputs and labels
+    """
+    predict = model.predict(img_path, save=True, save_txt=True, conf=0.50, iou=0.5)
+    return predict
+
+# Function to generate images using OpenAI's DALL-E
+def generate_image(prompt):
+    """
+    Generate an image using OpenAI's DALL-E based on a given prompt.
+    
+    Parameters:
+    - prompt: Text description for image generation
+
+    Returns:
+    - URL of the generated image
+    """
+    response = client.images.generate(
+        model="dall-e-2",
+        prompt=f'{prompt}',
+        n=1,
+        size="1024x1024",
+    )
+    img_url = response.data[0].url
+    return img_url
+
+# Function to read and validate labels
+def read_labels(path, output_path_bad, output_path_good, label, num_occurance, model:
+    """
+    Validate label files and categorize them into good or bad outputs.
+    
+    Parameters:
+    - path: Path to the label file
+    - output_path_bad: Path to store invalid labels
+    - output_path_good: Path to store valid labels
+    - label: Expected label class
+    - num_occurance: Expected number of occurrences of the label
+    - model: chosen labeler
+
+    Output:
+    - Stores the label file in appropriate directory
+    """
+    data_fr = pd.read_csv(path, sep=" ", header=None)
+    occurrences = data_fr[data_fr[0] == label].shape[0]
+
+    if (data_fr[0] != {label}).any():
+        data_fr.to_csv(output_path_bad, sep=" ", header=None)
+        print("Diff label")
+    elif occurrences != num_occurance
+
+# Function to perform a sanity check during the image generation process
+def sanity_check(count):
+    """
+    Generate images, predict labels, and validate label outputs.
+    Stops when a predefined number of images are successfully processed.
+
+    Parameters:
+    - count: Starting counter for image naming
+
+    Output:
+    - Processes up to 200 images based on prompts and saves results.
+    """
+    for i in range(300):  # Iterate over a maximum of 300 attempts
+        directory = os.listdir("image_dir")
+        if len(directory) == 200:  # Stop if 200 images are processed
+            print("STOP")
+            break
+
+        for prompt in prompts_list:  # Loop over prompt list for image generation
+            count += 1
+            full_path = f"{object}_{count}.png"  # Define the image file save path
+            output_path = "output_images/"
+            complete_path = output_path + full_path  # Complete path for saving images
+            lb_path = f"{object}{count}.txt"  # Define the label file path
+            complete_predict_path = predict_path + lb_path  # Path to predicted labels save path
+
+            # Define paths for good and bad label outputs
+            output_good = "output_images_good/"
+            output_bad = "output_images_bad/"
+            full_output_good = output_good + lb_path
+            full_output_bad = output_bad + lb_path
+
+            print(count)
+            if prompt == prompts_list[0]:  # Handle first prompt
+                print(prompt)
+                img_url = generate_image(prompt)  # Generate an image
+                urllib.request.urlretrieve(img_url, complete_path)  # Download image
+
+                try:
+                    auto_labels = predict(model, complete_path)  # Predict labels
+                    read_lb = read_labels(complete_predict_path, full_output_bad, full_output_good, {label}, 1)
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    # Create an empty file for bad labels
+                    with open(full_output_bad, 'w') as file:
+                        pass
+
+            elif prompt == prompts_list[1]:  # Handle second prompt
+                print(prompt)
+                img_url = generate_image(prompt)
+                urllib.request.urlretrieve(img_url, complete_path)
+
+                try:
+                    auto_labels = predict(model, complete_path)
+                    read_lb = read_labels(complete_predict_path, full_output_bad, full_output_good, {label}, 2)
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    with open(full_output_bad, 'w') as file:
+                        pass
+
+            elif prompt == prompts_list[2]:  # Handle third prompt
+                print(prompt)
+                img_url = generate_image(prompt)
+                urllib.request.urlretrieve(img_url, complete_path)
+
+                try:
+                    auto_labels = predict(model, complete_path)
+                    read_lb = read_labels(complete_predict_path, full_output_bad, full_output_good, {label}, 3)
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    with open(full_output_bad, 'w') as file:
+                        pass
+
+        # Stop when the directory contains 200 images
+        if len(directory) == 200:
+            print("STOP")
+            break
