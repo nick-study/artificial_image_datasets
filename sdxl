@@ -1,0 +1,52 @@
+# Mount Google Drive to access and save files directly to your Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Install required libraries for image generation and processing
+!pip install diffusers --upgrade  # Upgrade the diffusers library for working with diffusion models
+!pip install invisible_watermark transformers accelerate safetensors  # Install additional dependencies
+!pip install -U ultralytics  # Update the ultralytics library for YOLO integration
+
+# Set up the Hugging Face authentication token
+# Replace 'your_huggingface_token' with the actual token you generated from Hugging Face
+import os
+os.environ["HUGGINGFACE_TOKEN"] = "token"
+
+# Install the Hugging Face Hub library for managing models and resources
+!pip install huggingface_hub
+
+# Import the notebook login utility for Hugging Face
+from huggingface_hub import notebook_login
+
+# Login to your Hugging Face account to access pre-trained models
+notebook_login()
+
+# Import the DiffusionPipeline class for stable diffusion model usage
+from diffusers import DiffusionPipeline
+import torch  # PyTorch library for tensor computations
+
+# Load the Stable Diffusion XL base model with safetensors and half precision (fp16)
+pipe = DiffusionPipeline.from_pretrained(
+    "stabilityai/stable-diffusion-xl-base-1.0", 
+    torch_dtype=torch.float16,  # Use half precision for faster computations
+    use_safetensors=True,       # Use safe tensors for secure model loading
+    variant="fp16"              # Explicitly specify the fp16 variant
+)
+pipe.to("cuda")  # Move the model to the GPU for acceleration
+
+# Define a function to generate images using the diffusion pipeline
+def generate_image(prompt):
+    """
+    Generate an image based on the given text prompt using the Stable Diffusion model.
+    
+    Parameters:
+    - prompt: Text description of the desired image.
+
+    Returns:
+    - The generated image.
+    """
+    image = pipe(prompt=prompt).images[0]  # Generate the image from the prompt
+    # Optionally, save the generated image to a specific path
+    # image.save(save_path)
+    return image
+# follow the steps for sanity check of dall-e-2
